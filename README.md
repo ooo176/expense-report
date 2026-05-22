@@ -2,7 +2,7 @@
 
 > 把出差报销的 PDF / 图片发票一次性拖进来，自动拼成每页 2 / 4 / 6 / 9 张，预览后一键打印。
 
-**<a href="http://39.101.172.168:8181/other/expense-report.html" target="_blank">👉 点击直接在线使用</a>** — 无需下载，浏览器打开即用
+**👉 [点击直接在线使用](http://39.101.172.168:8181/other/expense-report.html)** — 无需下载，浏览器打开即用（Cmd/Ctrl+点击可新标签页打开）
 
 ⭐ **觉得好用？给个 Star 支持一下！**
 
@@ -28,7 +28,7 @@
 
 **方式一：在线使用（推荐）**
 
-<a href="http://39.101.172.168:8181/other/expense-report.html" target="_blank">http://39.101.172.168:8181/other/expense-report.html</a>
+http://39.101.172.168:8181/other/expense-report.html
 
 **方式二：本地打开**
 
