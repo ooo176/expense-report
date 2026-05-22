@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>发票报销打印拼版工具</title>
+<style>
+  :root {
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --bg: #f5f7fa;
+    --panel: #fff;
+    --border: #e2e8f0;
+    --text: #1e293b;
+    --muted: #64748b;
+    --danger: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+
+  /* ===== Toolbar ===== */
+  .toolbar {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .toolbar h1 {
+    margin: 0 0 12px;
+    font-size: 18px;
+    font-weight: 600;
+  }
+  .toolbar-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    align-items: center;
+  }
+  .field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+  }
+  .field label { color: var(--muted); }
+  select, input[type="number"], input[type="text"] {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    background: #fff;
+    outline: none;
+  }
+  select:focus, input:focus { border-color: var(--primary); }
+  input[type="number"] { width: 64px; }
+  .btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 500;
+    transition: background 0.15s;
+  }
+  .btn:hover { background: var(--primary-hover); }
+  .btn.secondary {
+    background: #fff;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn.secondary:hover { background: #f1f5f9; }
+  .btn.danger { background: var(--danger); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ===== File List ===== */
+  .upload-zone {
+    background: var(--panel);
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin: 20px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .upload-zone.drag { border-color: var(--primary); background: #eff6ff; }
+  .upload-zone p { margin: 4px 0; color: var(--muted); }
+  .upload-zone strong { color: var(--primary); }
+
+  .file-list {
+    margin: 0 24px 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+  }
+  .file-item {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+    cursor: grab;
+    user-select: none;
+  }
+  .file-item.dragging { opacity: 0.4; }
+  .file-item .thumb {
+    width: 100%;
+    height: 120px;
+    object-fit: contain;
+    background: #f8fafc;
+    border-radius: 4px;
+    display: block;
+    transition: transform 0.2s;
+  }
+  .file-item .name {
+    font-size: 12px;
+    margin-top: 6px;
+    word-break: break-all;
+    color: var(--muted);
+    max-height: 32px;
+    overflow: hidden;
+  }
+  .file-item .remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(220, 38, 38, 0.9);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .file-item .rotate {
+    position: absolute;
+    top: 4px;
+    right: 30px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(15, 23, 42, 0.75);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .file-item .index {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background: rgba(37, 99, 235, 0.9);
+    color: #fff;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ===== Preview ===== */
+  .preview-wrap {
+    padding: 0 24px 40px;
+  }
+  .preview-title {
+    font-size: 14px;
+    color: var(--muted);
+    margin: 16px 0 12px;
+  }
+  .page {
+    background: #fff;
+    margin: 0 auto 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    page-break-after: always;
+    display: grid;
+    overflow: hidden;
+  }
+  .page-A4 { width: 210mm; height: 297mm; }
+  .page-A4-landscape { width: 297mm; height: 210mm; }
+  .page .cell {
+    border: 1px dashed #cbd5e1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 4mm;
+  }
+  .page .cell img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+  .page .cell.empty { background: #fafafa; }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+  .loading {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ===== Print ===== */
+  @media print {
+    @page {
+      size: A4;
+      margin: 0;
+    }
+    @page landscape { size: A4 landscape; }
+    body { background: #fff; }
+    .toolbar, .upload-zone, .file-list, .preview-title { display: none !important; }
+    .preview-wrap { padding: 0; }
+    .page {
+      box-shadow: none;
+      margin: 0;
+      page-break-after: always;
+    }
+    .page:last-child { page-break-after: auto; }
+    .page .cell { border: none; padding: 4mm; }
+  }
+  body.landscape-print { /* helper to hint orientation; combined with @page rules below */ }
+  @media print {
+    body.landscape-print @page { size: A4 landscape; }
+  }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <h1>发票报销打印拼版工具</h1>
+    <div class="toolbar-row">
+      <div class="field">
+        <label>每页张数</label>
+        <select id="layout">
+          <option value="1x2">2 张 (1×2)</option>
+          <option value="2x2" selected>4 张 (2×2)</option>
+          <option value="2x3">6 张 (2×3)</option>
+          <option value="3x3">9 张 (3×3)</option>
+          <option value="custom">自定义</option>
+        </select>
+      </div>
+      <div class="field" id="customFields" style="display:none;">
+        <label>列</label>
+        <input type="number" id="customCols" min="1" max="10" value="2" />
+        <label>行</label>
+        <input type="number" id="customRows" min="1" max="10" value="2" />
+      </div>
+      <div class="field">
+        <label>纸张方向</label>
+        <select id="orientation">
+          <option value="portrait" selected>纵向</option>
+          <option value="landscape">横向</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>间距</label>
+        <select id="gap">
+          <option value="0">紧凑</option>
+          <option value="2" selected>2mm</option>
+          <option value="4">4mm</option>
+          <option value="6">6mm</option>
+        </select>
+      </div>
+      <div class="field">
+        <label><input type="checkbox" id="showBorder" checked /> 显示分割线</label>
+      </div>
+      <div class="field">
+        <label><input type="checkbox" id="autoRotate" checked /> 自动旋转贴合</label>
+      </div>
+      <div class="field">
+        <label>渲染质量</label>
+        <select id="quality">
+          <option value="150">普通 150DPI</option>
+          <option value="200" selected>清晰 200DPI</option>
+          <option value="300">高清 300DPI</option>
+        </select>
+      </div>
+      <div style="flex:1;"></div>
+      <button class="btn secondary" id="clearBtn">清空</button>
+      <button class="btn" id="printBtn">打印</button>
+    </div>
+  </div>
+
+  <div class="upload-zone" id="uploadZone">
+    <p><strong>点击此处选择文件</strong> 或 把发票拖到这里</p>
+    <p style="font-size:13px;">支持 PDF / JPG / PNG / WEBP / GIF / BMP，可一次选多个，PDF 多页会自动拆开</p>
+    <input type="file" id="fileInput" multiple accept="application/pdf,image/*" style="display:none;" />
+  </div>
+
+  <div class="file-list" id="fileList"></div>
+
+  <div class="preview-wrap">
+    <div class="preview-title" id="previewTitle"></div>
+    <div id="preview"></div>
+  </div>
+
+<script type="module">
+  import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.7.76/pdf.min.mjs';
+
+  const PDFJS_VERSION = '4.7.76';
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.mjs`;
+
+  // PDF.js needs CMap data to render CJK / Chinese e-invoices correctly,
+  // and standard font data for fonts not embedded in the PDF.
+  // Without these, characters get mapped to wrong glyphs and text looks
+  // completely unrelated to the original.
+  const PDFJS_CMAP_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/cmaps/`;
+  const PDFJS_STANDARD_FONT_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/standard_fonts/`;
+
+  // invoice item: { id, name, dataUrl }
+  const state = {
+    items: [],
+    nextId: 1,
+  };
+
+  const $ = (sel) => document.querySelector(sel);
+  const fileInput = $('#fileInput');
+  const uploadZone = $('#uploadZone');
+  const fileList = $('#fileList');
+  const preview = $('#preview');
+  const previewTitle = $('#previewTitle');
+  const layoutSel = $('#layout');
+  const customFields = $('#customFields');
+  const customCols = $('#customCols');
+  const customRows = $('#customRows');
+  const orientationSel = $('#orientation');
+  const gapSel = $('#gap');
+  const showBorder = $('#showBorder');
+  const autoRotate = $('#autoRotate');
+  const qualitySel = $('#quality');
+
+  uploadZone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+  ['dragenter', 'dragover'].forEach(ev =>
+    uploadZone.addEventListener(ev, (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('drag');
+    })
+  );
+  ['dragleave', 'drop'].forEach(ev =>
+    uploadZone.addEventListener(ev, (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('drag');
+    })
+  );
+  uploadZone.addEventListener('drop', (e) => {
+    handleFiles(e.dataTransfer.files);
+  });
+
+  layoutSel.addEventListener('change', () => {
+    customFields.style.display = layoutSel.value === 'custom' ? 'flex' : 'none';
+    renderPreview();
+  });
+  [customCols, customRows, orientationSel, gapSel, showBorder, autoRotate].forEach(el =>
+    el.addEventListener('change', renderPreview)
+  );
+  qualitySel.addEventListener('change', () => {
+    if (!state.items.length) return;
+    if (confirm('改变渲染质量需要重新处理已上传的 PDF，是否继续？')) {
+      reRenderAllPdfs();
+    } else {
+      // revert select to previous value not tracked; just no-op
+    }
+  });
+
+  $('#clearBtn').addEventListener('click', () => {
+    if (state.items.length && !confirm('确认清空所有文件？')) return;
+    state.items = [];
+    renderFileList();
+    renderPreview();
+  });
+  $('#printBtn').addEventListener('click', () => {
+    if (!state.items.length) {
+      alert('请先上传发票');
+      return;
+    }
+    window.print();
+  });
+
+  async function handleFiles(fileList) {
+    const files = Array.from(fileList);
+    if (!files.length) return;
+    previewTitle.innerHTML = '<span class="loading"></span>正在处理文件...';
+    for (const file of files) {
+      try {
+        if (file.type === 'application/pdf') {
+          await processPdf(file);
+        } else if (file.type.startsWith('image/')) {
+          await processImage(file);
+        } else {
+          console.warn('跳过不支持的文件:', file.name);
+        }
+      } catch (err) {
+        console.error('处理失败:', file.name, err);
+        alert(`处理 ${file.name} 失败: ${err.message}`);
+      }
+      renderFileList();
+      renderPreview();
+    }
+    fileInput.value = '';
+  }
+
+  function processImage(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const probe = new Image();
+        probe.onload = () => {
+          state.items.push({
+            id: state.nextId++,
+            name: file.name,
+            dataUrl: reader.result,
+            rotate: 0,
+            source: 'image',
+            w: probe.naturalWidth,
+            h: probe.naturalHeight,
+          });
+          resolve();
+        };
+        probe.onerror = reject;
+        probe.src = reader.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Compute render scale so output is at the chosen DPI when printed at A4.
+  // PDF userspace unit = 1/72 inch. Target DPI / 72 = scale needed to hit DPI.
+  // We also clamp by max canvas dimension (~16384) to avoid browser canvas limits.
+  function computeScale(viewport1) {
+    const dpi = Number(qualitySel.value) || 200;
+    let scale = dpi / 72;
+    const maxDim = 12000; // safe upper bound across browsers
+    const longest = Math.max(viewport1.width, viewport1.height);
+    if (longest * scale > maxDim) scale = maxDim / longest;
+    return scale;
+  }
+
+  async function renderPdfPageToDataUrl(page) {
+    const viewport1 = page.getViewport({ scale: 1 });
+    const scale = computeScale(viewport1);
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.floor(viewport.width);
+    canvas.height = Math.floor(viewport.height);
+    const ctx = canvas.getContext('2d');
+    // White background — fixes transparent PDFs becoming black on JPEG export
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({
+      canvasContext: ctx,
+      viewport,
+      background: 'rgba(255,255,255,1)',
+    }).promise;
+    // PNG keeps text crisp; if too large fall back to high-quality JPEG
+    let dataUrl = canvas.toDataURL('image/png');
+    if (dataUrl.length > 8 * 1024 * 1024) {
+      dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+    }
+    return { dataUrl, w: canvas.width, h: canvas.height };
+  }
+
+  async function processPdf(file) {
+    const buf = await file.arrayBuffer();
+    // PDF.js transfers (detaches) the ArrayBuffer we hand to it, so always
+    // pass a fresh clone — both for the initial load and for re-renders.
+    const pdf = await pdfjsLib.getDocument({
+      data: buf.slice(0),
+      cMapUrl: PDFJS_CMAP_URL,
+      cMapPacked: true,
+      standardFontDataUrl: PDFJS_STANDARD_FONT_URL,
+      // Do NOT swap embedded subset fonts with system fonts — Chinese
+      // e-invoices embed fonts with custom CID-to-glyph mappings, and any
+      // substitution causes the wrong characters to be drawn.
+      useSystemFonts: false,
+      disableFontFace: false,
+    }).promise;
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const { dataUrl, w, h } = await renderPdfPageToDataUrl(page);
+      state.items.push({
+        id: state.nextId++,
+        name: pdf.numPages > 1 ? `${file.name} - p${i}` : file.name,
+        dataUrl,
+        rotate: 0,
+        source: 'pdf',
+        w, h,
+        pdfBuffer: buf,
+        pdfPageIndex: i,
+      });
+    }
+  }
+
+  async function reRenderAllPdfs() {
+    previewTitle.innerHTML = '<span class="loading"></span>正在按新质量重渲染 PDF...';
+    const cache = new Map();
+    for (const item of state.items) {
+      if (item.source !== 'pdf' || !item.pdfBuffer) continue;
+      let pdf = cache.get(item.pdfBuffer);
+      if (!pdf) {
+        pdf = await pdfjsLib.getDocument({
+          data: item.pdfBuffer.slice(0),
+          cMapUrl: PDFJS_CMAP_URL,
+          cMapPacked: true,
+          standardFontDataUrl: PDFJS_STANDARD_FONT_URL,
+          useSystemFonts: false,
+          disableFontFace: false,
+        }).promise;
+        cache.set(item.pdfBuffer, pdf);
+      }
+      const page = await pdf.getPage(item.pdfPageIndex);
+      const out = await renderPdfPageToDataUrl(page);
+      item.dataUrl = out.dataUrl;
+      item.w = out.w;
+      item.h = out.h;
+    }
+    renderFileList();
+    renderPreview();
+  }
+
+  function renderFileList() {
+    fileList.innerHTML = '';
+    state.items.forEach((item, idx) => {
+      const div = document.createElement('div');
+      div.className = 'file-item';
+      div.draggable = true;
+      div.dataset.id = item.id;
+      const rot = (item.rotate || 0);
+      div.innerHTML = `
+        <div class="index">${idx + 1}</div>
+        <button class="rotate" title="旋转 90°">↻</button>
+        <button class="remove" title="移除">×</button>
+        <img class="thumb" src="${item.dataUrl}" alt="" style="transform: rotate(${rot}deg);" />
+        <div class="name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
+      `;
+      div.querySelector('.remove').addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.items = state.items.filter(it => it.id !== item.id);
+        renderFileList();
+        renderPreview();
+      });
+      div.querySelector('.rotate').addEventListener('click', (e) => {
+        e.stopPropagation();
+        item.rotate = ((item.rotate || 0) + 90) % 360;
+        renderFileList();
+        renderPreview();
+      });
+      attachDnD(div);
+      fileList.appendChild(div);
+    });
+  }
+
+  let dragSrcId = null;
+  function attachDnD(el) {
+    el.addEventListener('dragstart', (e) => {
+      dragSrcId = Number(el.dataset.id);
+      el.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    el.addEventListener('dragend', () => el.classList.remove('dragging'));
+    el.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    });
+    el.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const targetId = Number(el.dataset.id);
+      if (dragSrcId == null || dragSrcId === targetId) return;
+      const srcIdx = state.items.findIndex(it => it.id === dragSrcId);
+      const tgtIdx = state.items.findIndex(it => it.id === targetId);
+      if (srcIdx < 0 || tgtIdx < 0) return;
+      const [moved] = state.items.splice(srcIdx, 1);
+      state.items.splice(tgtIdx, 0, moved);
+      dragSrcId = null;
+      renderFileList();
+      renderPreview();
+    });
+  }
+
+  function getLayout() {
+    const v = layoutSel.value;
+    if (v === 'custom') {
+      return {
+        cols: Math.max(1, Number(customCols.value) || 1),
+        rows: Math.max(1, Number(customRows.value) || 1),
+      };
+    }
+    const [c, r] = v.split('x').map(Number);
+    return { cols: c, rows: r };
+  }
+
+  function renderPreview() {
+    preview.innerHTML = '';
+    const { cols, rows } = getLayout();
+    const perPage = cols * rows;
+    const orientation = orientationSel.value;
+    const gap = Number(gapSel.value);
+    const border = showBorder.checked;
+    const auto = autoRotate.checked;
+
+    if (!state.items.length) {
+      previewTitle.innerHTML = '';
+      preview.innerHTML = `<div class="empty-state">还没有发票，先上传几张试试</div>`;
+      return;
+    }
+
+    const pageCount = Math.ceil(state.items.length / perPage);
+    previewTitle.textContent =
+      `共 ${state.items.length} 张发票，按 ${cols}×${rows} 排版，将打印 ${pageCount} 页`;
+
+    let dynStyle = document.getElementById('dyn-print-style');
+    if (!dynStyle) {
+      dynStyle = document.createElement('style');
+      dynStyle.id = 'dyn-print-style';
+      document.head.appendChild(dynStyle);
+    }
+    dynStyle.textContent = `@media print { @page { size: A4 ${orientation}; margin: 0; } }`;
+
+    // Cell dimensions (in mm) — needed to size rotated wrappers correctly.
+    const pageW = orientation === 'landscape' ? 297 : 210;
+    const pageH = orientation === 'landscape' ? 210 : 297;
+    const usableW = pageW - 2 * gap - (cols - 1) * gap;
+    const usableH = pageH - 2 * gap - (rows - 1) * gap;
+    const cellW = usableW / cols;
+    const cellH = usableH / rows;
+    // Padding inside each cell (small inner margin so images don't touch edges)
+    const inner = 2;
+    const innerW = Math.max(0, cellW - 2 * inner);
+    const innerH = Math.max(0, cellH - 2 * inner);
+
+    for (let p = 0; p < pageCount; p++) {
+      const pageEl = document.createElement('div');
+      pageEl.className = 'page ' + (orientation === 'landscape' ? 'page-A4-landscape' : 'page-A4');
+      pageEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+      pageEl.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+      pageEl.style.gap = gap + 'mm';
+      pageEl.style.padding = gap + 'mm';
+
+      for (let i = 0; i < perPage; i++) {
+        const itemIdx = p * perPage + i;
+        const item = state.items[itemIdx];
+        const cell = document.createElement('div');
+        cell.className = 'cell' + (item ? '' : ' empty');
+        if (!border) cell.style.border = 'none';
+        if (item) {
+          // Decide effective rotation: manual + (optional) auto-fit
+          let rot = (item.rotate || 0) % 360;
+          if (auto && item.w && item.h) {
+            // After applying manual rotation, what's the effective image aspect?
+            const manualSwapped = rot === 90 || rot === 270;
+            const eW = manualSwapped ? item.h : item.w;
+            const eH = manualSwapped ? item.w : item.h;
+            const imgLandscape = eW > eH;
+            const cellLandscape = innerW > innerH;
+            if (imgLandscape !== cellLandscape) {
+              rot = (rot + 90) % 360;
+            }
+          }
+          const swapped = rot === 90 || rot === 270;
+          const wrap = document.createElement('div');
+          wrap.style.display = 'flex';
+          wrap.style.alignItems = 'center';
+          wrap.style.justifyContent = 'center';
+          // When rotated 90/270, wrapper's pre-rotation box must have swapped dims
+          // so that AFTER the rotation it visually fills the cell correctly.
+          wrap.style.width = (swapped ? innerH : innerW) + 'mm';
+          wrap.style.height = (swapped ? innerW : innerH) + 'mm';
+          if (rot) wrap.style.transform = `rotate(${rot}deg)`;
+          const img = document.createElement('img');
+          img.src = item.dataUrl;
+          img.alt = item.name;
+          img.style.maxWidth = '100%';
+          img.style.maxHeight = '100%';
+          img.style.objectFit = 'contain';
+          img.style.display = 'block';
+          wrap.appendChild(img);
+          cell.appendChild(wrap);
+        }
+        pageEl.appendChild(cell);
+      }
+      preview.appendChild(pageEl);
+    }
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  renderPreview();
+</script>
+</body>
+</html>

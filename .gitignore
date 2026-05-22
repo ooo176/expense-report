@@ -1,0 +1,77 @@
+# IDE / Editor
+.idea/
+.vscode/
+*.iml
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.project
+.classpath
+.settings/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Node (if you ever add tooling)
+node_modules/
+dist/
+.cache/
+
+# Local invoice / receipt files — never commit personal expense data
+*.pdf
+*.PDF
+!docs/**/*.pdf
+invoices/
+receipts/
+expense/
+报销/
+发票/
+
+# Screenshots / scans pulled in for testing
+Snipaste_*.png
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.webp
+!docs/**/*.png
+!docs/**/*.jpg
+
+# Temporary / scratch
+tmp/
+temp/
+.tmp/
+*.bak
+*.tmp
